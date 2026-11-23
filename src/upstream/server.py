@@ -264,6 +264,8 @@ async def bgp_routing_history(resource: str, start: str, end: str) -> dict[str, 
 # --------------------------------------------------------------------------- #
 
 EntityType = Literal["country", "asn", "region"]
+# IODA's three long-standing signals: BGP visibility, active probing, and darknet (network telescope) traffic.
+CORE_SIGNALS = {"bgp", "ping-slash24", "merit-nt"}
 
 
 def _entity_code(entity_type: str, code: str) -> str:
@@ -306,10 +308,21 @@ async def ioda_outage_events(entity_type: EntityType, entity_code: str, start: s
     }
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def _summarize_series(series: dict[str, Any], buckets: int = 24) -> dict[str, Any]:
     step, t0 = series.get("step") or 300, series.get("from") or 0
-    points = [(t0 + i * step, v) for i, v in enumerate(series.get("values") or []) if v is not None]
+    raw = [v for v in (series.get("values") or []) if v is not None]
     out: dict[str, Any] = {"signal": series.get("datasource"), "step_seconds": step}
+    # IODA keeps adding datasources. Some newer ones (ping-slash24-loss, ping-slash24-latency,
+    # mozilla) carry a list of per-region records per point instead of a number. Skip those
+    # rather than letting one series take down the whole tool call.
+    if raw and not all(_is_number(v) for v in raw):
+        out["note"] = "Skipped: this datasource is not a simple time series."
+        return out
+    points = [(t0 + i * step, v) for i, v in enumerate(series.get("values") or []) if v is not None]
     if len(points) < 3:
         out["note"] = "Not enough data points in this window."
         return out
@@ -355,12 +368,29 @@ async def ioda_signal_summary(
     series = [s for group in (data or []) for s in (group or [])]
     if not series:
         return {"entity": f"{entity_type}/{code}", "note": "IODA has no signal data for this entity and window."}
-    return {
+    # IODA returns more datasources than it used to (Google Transparency Report, per-region loss and
+    # latency records, Mozilla telemetry). With signal='all', keep the three core time series so the
+    # result stays well inside the agent's tool-result budget, and just name the rest.
+    wanted = CORE_SIGNALS if signal == "all" else {signal}
+    kept = [s for s in series if s.get("datasource") in wanted]
+    other = sorted({s.get("datasource") for s in series} - wanted - {None})
+    summaries = []
+    for s in kept:
+        try:
+            summaries.append(_summarize_series(s))
+        except Exception as exc:  # one odd series must not break the others
+            summaries.append({"signal": s.get("datasource"), "note": f"Skipped: could not summarize ({type(exc).__name__})."})
+    # Put the series with real numbers first, so the model sees the useful ones before any skipped ones.
+    summaries.sort(key=lambda s: "baseline" not in s)
+    out = {
         "entity": f"{entity_type}/{code}",
         "name": series[0].get("entityName"),
         "window": [iso(t0), iso(t1)],
-        "signals": [_summarize_series(s) for s in series],
+        "signals": summaries,
     }
+    if other:
+        out["other_datasources_not_summarized"] = other
+    return out
 
 
 @mcp.tool(annotations=READ_ONLY)

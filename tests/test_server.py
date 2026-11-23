@@ -19,11 +19,20 @@ IODA_EVENTS_ES = [
      "score": 751.1, "location_name": "Spain"},
 ]
 # 12 points of normal, then a drop to ~40%, five-minute steps starting 08:00Z.
-IODA_SIGNAL_ES = [[{
-    "entityType": "country", "entityCode": "ES", "entityName": "Spain", "datasource": "bgp",
-    "from": 1745827200, "until": 1745838000, "step": 300,
-    "values": [100] * 12 + [None] + [40] * 12 + [55] * 11,
-}]]
+IODA_SIGNAL_ES = [[
+    # Newer IODA datasources carry a list of per-region records per point, not a number.
+    # Captured from the live API in Nov 2025; this shape used to crash the summarizer.
+    {
+        "entityType": "country", "entityCode": "ES", "entityName": "Spain", "datasource": "ping-slash24-loss",
+        "from": 1745827200, "until": 1745838000, "step": 600,
+        "values": [[{"country_code": "ES", "geo_db": "ipinfo", "agg_values": {"loss_pct": 32.06, "probe_count": 69745}}]] * 18,
+    },
+    {
+        "entityType": "country", "entityCode": "ES", "entityName": "Spain", "datasource": "bgp",
+        "from": 1745827200, "until": 1745838000, "step": 300,
+        "values": [100] * 12 + [None] + [40] * 12 + [55] * 11,
+    },
+]]
 IODA_SUMMARY_AU = [{
     "scores": {"ping-slash24.median": 31323.5, "bgp.median": 20218.7, "overall": 633319914.2},
     "event_cnt": 2,
@@ -98,10 +107,21 @@ def test_signal_summary_finds_the_drop():
     err, out = call("ioda_signal_summary", entity_type="country", entity_code="ES",
                     start="2025-04-28T08:00Z", end="2025-04-28T11:00Z")
     assert not err
+    assert [s["signal"] for s in out["signals"]] == ["bgp"]
     sig = out["signals"][0]
     assert sig["baseline"] == 100
     assert sig["lowest"]["pct_of_baseline"] == 40
     assert sig["lowest"]["at"] == "2025-04-28T09:05Z"
+    # The non-core datasource (list-of-dicts values) is named, not summarized, and must not crash the call.
+    assert out["other_datasources_not_summarized"] == ["ping-slash24-loss"]
+
+
+def test_signal_summary_skips_non_numeric_series_when_asked_for_explicitly():
+    """Asking for a datasource whose values aren't numbers reports it as skipped instead of crashing."""
+    weird = {"datasource": "ping-slash24-loss", "from": 0, "step": 600,
+             "values": [[{"agg_values": {"loss_pct": 1.0}}]] * 5}
+    out = server._summarize_series(weird)
+    assert out["signal"] == "ping-slash24-loss" and out["note"].startswith("Skipped")
 
 
 def test_bgp_update_burst_is_flagged():
