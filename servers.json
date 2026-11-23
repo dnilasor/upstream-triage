@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "internet-signals": {
+      "command": "python",
+      "args": ["-m", "upstream.server"]
+    },
+    "cloudflare-radar": {
+      "url": "https://radar.mcp.cloudflare.com/mcp",
+      "headers": { "Authorization": "Bearer ${CLOUDFLARE_API_TOKEN}" },
+      "requires_env": ["CLOUDFLARE_API_TOKEN"]
+    }
+  }
+}

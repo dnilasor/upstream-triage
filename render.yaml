@@ -1,0 +1,40 @@
+# Render Blueprint: New > Blueprint > pick this repo > Apply (or use the README's Deploy button).
+#
+# 1. internet-signals-mcp: the MCP server as a public remote connector. No secrets, no cost to you
+#    beyond Render's free tier. Anyone can add <url>/mcp to Claude as a custom connector.
+# 2. upstream-web: the agent behind a small web page, so people can try it from a link.
+#    It spends YOUR Anthropic credits, so it asks for an API key, a passcode and a daily cap.
+#    Delete this service from the Blueprint if you only want the MCP server.
+#
+# Free instances sleep when idle; the first request after a nap can take up to a minute.
+
+services:
+  - type: web
+    name: internet-signals-mcp
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: upstream-signals --http --host 0.0.0.0
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+
+  - type: web
+    name: upstream-web
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: upstream-web
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: ANTHROPIC_API_KEY
+        sync: false # you'll be prompted for it on first apply
+      - key: DEMO_PASSCODE
+        sync: false # share this with the people you send the link to
+      - key: DAILY_LIMIT
+        value: "25"

@@ -1,0 +1,23 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/python:3.12
+    volumes:
+      - ..:/workspaces/upstream-triage:cached
+    command: sleep infinity
+    environment:
+      # Send traces from the agent and the MCP server to Jaeger.
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      HOST: 0.0.0.0
+    depends_on:
+      - jaeger
+
+  jaeger:
+    # All-in-one Jaeger v2: OTLP in on 4317/4318, UI on 16686, in-memory storage.
+    image: jaegertracing/jaeger:2.11.0
+    restart: unless-stopped
+    # Listen for OTLP on all interfaces so the app container can reach it.
+    command:
+      - --set
+      - receivers.otlp.protocols.http.endpoint=0.0.0.0:4318
+      - --set
+      - receivers.otlp.protocols.grpc.endpoint=0.0.0.0:4317

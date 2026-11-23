@@ -1,0 +1,27 @@
+{
+  "name": "upstream-triage",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/upstream-triage",
+  "postCreateCommand": "pip install --user -e '.[dev]'",
+  "forwardPorts": ["jaeger:16686", 8080, 8000],
+  "portsAttributes": {
+    "jaeger:16686": { "label": "Jaeger traces", "onAutoForward": "notify" },
+    "8080": { "label": "Upstream web demo" },
+    "8000": { "label": "MCP server (HTTP)" }
+  },
+  "secrets": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API key, used by the agent to call Claude.",
+      "documentationUrl": "https://console.anthropic.com/settings/keys"
+    },
+    "CLOUDFLARE_API_TOKEN": {
+      "description": "Optional. A Cloudflare API token with Radar read access, to add Cloudflare's official Radar MCP server."
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  }
+}
