@@ -8,8 +8,7 @@ can see exactly how the agent reasoned, what it cost, and where it went wrong.
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/YOUR_GITHUB_USERNAME/upstream-triage)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/YOUR_GITHUB_USERNAME/upstream-triage)
 
-<!-- Add a GIF here: `upstream replay iberian-blackout` in the terminal, then the trace in Jaeger. -->
-
+![Output from the 7/19/24 Crowdstrike outage replay](image.png)
 ```
 $ upstream replay iberian-blackout
 Replaying: Spain & Portugal power blackout (2025-04-28)
