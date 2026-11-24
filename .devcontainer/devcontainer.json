@@ -4,9 +4,9 @@
   "service": "app",
   "workspaceFolder": "/workspaces/upstream-triage",
   "postCreateCommand": "pip install --user -e '.[dev]'",
-  "forwardPorts": ["jaeger:16686", 8080, 8000],
+  "forwardPorts": [16686, 8080, 8000],
   "portsAttributes": {
-    "jaeger:16686": { "label": "Jaeger traces", "onAutoForward": "notify" },
+    "16686": { "label": "Jaeger traces", "onAutoForward": "notify" },
     "8080": { "label": "Upstream web demo" },
     "8000": { "label": "MCP server (HTTP)" }
   },
