@@ -150,6 +150,7 @@ a `DAILY_LIMIT` (default 25 investigations a day). To deploy only the MCP server
 Free instances sleep when idle, so open the link once before an interview to wake it up.
 
 ## Observability: what the traces show
+![Trace](image-1.png)
 
 Each investigation is one trace that spans both processes:
 
